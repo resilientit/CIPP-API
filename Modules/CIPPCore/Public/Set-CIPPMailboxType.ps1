@@ -1,23 +1,25 @@
 function Set-CIPPMailboxType {
     [CmdletBinding()]
     param (
-        $ExecutingUser,
-        $userid,
-        $username,
+        $Headers,
+        $UserID,
+        $Username,
         $APIName = 'Mailbox Conversion',
         $TenantFilter,
-        [Parameter()]
+        [Parameter(Mandatory = $true)]
         [ValidateSet('Shared', 'Regular', 'Room', 'Equipment')]$MailboxType
     )
 
     try {
-        $null = New-ExoRequest -tenantid $TenantFilter -cmdlet 'Set-mailbox' -cmdParams @{Identity = $userid; type = $MailboxType } -Anchor $username
-        Write-LogMessage -user $ExecutingUser -API $APIName -message "Converted $($username) to a $MailboxType mailbox" -Sev 'Info' -tenant $TenantFilter
-        if (!$username) { $username = $userid }
-        return "Converted $($username) to a $MailboxType mailbox"
+        if ([string]::IsNullOrWhiteSpace($Username)) { $Username = $UserID }
+        $null = New-ExoRequest -tenantid $TenantFilter -cmdlet 'Set-Mailbox' -cmdParams @{Identity = $UserID; Type = $MailboxType } -Anchor $Username
+        $Message = "Successfully converted $Username to a $MailboxType mailbox"
+        Write-LogMessage -headers $Headers -API $APIName -message $Message -Sev 'Info' -tenant $TenantFilter
+        return $Message
     } catch {
         $ErrorMessage = Get-CippException -Exception $_
-        Write-LogMessage -user $ExecutingUser -API $APIName -message "Could not convert $username to $MailboxType mailbox. Error: $($ErrorMessage.NormalizedError)" -Sev 'Error' -tenant $TenantFilter -LogData $ErrorMessage
-        return  "Could not convert $($username) to a $MailboxType mailbox. Error: $($ErrorMessage.NormalizedError)"
+        $Message = "Failed to convert $Username to a $MailboxType mailbox. Error: $($ErrorMessage.NormalizedError)"
+        Write-LogMessage -headers $Headers -API $APIName -message $Message -Sev 'Error' -tenant $TenantFilter -LogData $ErrorMessage
+        throw $Message
     }
 }
